@@ -12,10 +12,10 @@ UpgradeBehavior: install
 # Inno Setup registers itself as "<AppId>_is1" in the uninstall registry key.
 # AppId is defined in packaging/windows/syncthing-status.iss and must stay stable.
 ProductCode: '{7C4B9E2A-3F51-4D8B-9A6E-1B2C3D4E5F60}_is1'
+ReleaseDate: 2026-09-04
 Installers:
   - Architecture: x64
     InstallerUrl: https://github.com/ArveLomsland/SyncthingStatus/releases/download/v0.1.0/syncthing-status-0.1.0-setup.exe
-    # Take this from SHA256SUMS in the GitHub release.
-    InstallerSha256: REPLACE_WITH_SHA256_OF_THE_RELEASED_INSTALLER
+    InstallerSha256: 3BC2ED0285A900AA765ED5FB105F565EA2FD865B7EF93558A2BEF2A6A121506D
 ManifestType: installer
 ManifestVersion: 1.6.0
