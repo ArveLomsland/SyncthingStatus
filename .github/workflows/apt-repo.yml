@@ -9,7 +9,13 @@ name: apt-repo
 #   - Settings -> Pages -> Source = GitHub Actions
 # See docs/PUBLISHING.md.
 
+# Note: a release created by the build workflow with GITHUB_TOKEN does not
+# trigger a `release: published` event, so we also listen for the build workflow
+# finishing. The `release` trigger still covers releases published by hand.
 on:
+  workflow_run:
+    workflows: [build]
+    types: [completed]
   release:
     types: [published]
   workflow_dispatch:
@@ -25,7 +31,10 @@ concurrency:
 
 jobs:
   build:
-    if: ${{ vars.PUBLISH_APT == 'true' }}
+    if: >-
+      ${{ vars.PUBLISH_APT == 'true'
+          && (github.event_name != 'workflow_run'
+              || github.event.workflow_run.conclusion == 'success') }}
     runs-on: ubuntu-latest
     environment:
       name: github-pages

@@ -64,7 +64,7 @@ sudo apt install syncthing-status
 Or install a downloaded package directly, without automatic updates:
 
 ```bash
-sudo apt install ./syncthing-status_0.1.0_amd64.deb
+sudo apt install ./syncthing-status_0.1.0-1_amd64.deb
 ```
 
 The package installs `/usr/bin/syncthing-status`, a menu entry and autostart
