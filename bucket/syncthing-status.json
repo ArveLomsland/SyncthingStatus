@@ -6,7 +6,7 @@
   "architecture": {
     "64bit": {
       "url": "https://github.com/ArveLomsland/SyncthingStatus/releases/download/v0.1.0/syncthing-status-0.1.0-setup.exe#/setup.exe",
-      "hash": "6384006d048d0415413c0716dc276bd6353d7ca509a4bfa61f64ab8af2283715"
+      "hash": "3bc2ed0285a900aa765ed5fb105f565ea2fd865b7ef93558a2bef2a6a121506d"
     }
   },
   "innosetup": true,
