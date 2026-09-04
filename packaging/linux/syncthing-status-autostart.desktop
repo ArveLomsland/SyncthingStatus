@@ -1,0 +1,14 @@
+[Desktop Entry]
+Type=Application
+Version=1.0
+Name=SyncthingStatus
+Name[nb]=SyncthingStatus
+Comment=Show Syncthing status in the system tray
+Comment[nb]=Vis status for Syncthing i systemkurven
+# Litt forsinkelse slik at panelet/statusfeltet er klart før ikonet legges til
+Exec=sh -c 'sleep 5; exec /usr/bin/syncthing-status'
+Icon=syncthing-status
+Terminal=false
+NoDisplay=true
+X-GNOME-Autostart-enabled=true
+X-GNOME-Autostart-Delay=5

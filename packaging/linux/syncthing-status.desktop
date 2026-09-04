@@ -1,0 +1,13 @@
+[Desktop Entry]
+Type=Application
+Version=1.0
+Name=SyncthingStatus
+Name[nb]=SyncthingStatus
+Comment=Show Syncthing status in the system tray
+Comment[nb]=Vis status for Syncthing i systemkurven
+Exec=/usr/bin/syncthing-status
+Icon=syncthing-status
+Terminal=false
+Categories=Utility;Network;FileTransfer;
+Keywords=syncthing;sync;tray;status;
+StartupNotify=false
