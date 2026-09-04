@@ -13,11 +13,13 @@ jobs:
       - uses: dtolnay/rust-toolchain@stable
       - uses: Swatinem/rust-cache@v2
 
-      - name: Bygg installer
+      - name: Install Inno Setup
         shell: pwsh
-        run: |
-          winget install --id JRSoftware.InnoSetup -e --accept-source-agreements --accept-package-agreements --disable-interactivity
-          ./packaging/windows/build-installer.ps1
+        run: choco install innosetup -y --no-progress
+
+      - name: Build installer
+        shell: pwsh
+        run: ./packaging/windows/build-installer.ps1
 
       - uses: actions/upload-artifact@v4
         with:
@@ -31,13 +33,13 @@ jobs:
       - uses: dtolnay/rust-toolchain@stable
       - uses: Swatinem/rust-cache@v2
 
-      - name: Systemavhengigheter
+      - name: System dependencies
         run: |
           sudo apt-get update
           sudo apt-get install -y build-essential pkg-config libgtk-3-dev \
             libayatana-appindicator3-dev
 
-      - name: Bygg .deb
+      - name: Build .deb
         run: |
           cargo install cargo-deb --locked
           cargo build --release
@@ -55,10 +57,78 @@ jobs:
     runs-on: ubuntu-latest
     permissions:
       contents: write
+    outputs:
+      version: ${{ steps.version.outputs.version }}
     steps:
       - uses: actions/download-artifact@v4
         with:
           path: artifacts
+
+      - name: Determine version
+        id: version
+        run: echo "version=${GITHUB_REF_NAME#v}" >> "$GITHUB_OUTPUT"
+
+      - name: Collect files and checksums
+        run: |
+          mkdir -p release
+          find artifacts -type f \( -name '*.exe' -o -name '*.deb' \) -exec cp {} release/ \;
+          cd release
+          sha256sum *.exe *.deb > SHA256SUMS
+          cat SHA256SUMS
+
       - uses: softprops/action-gh-release@v2
         with:
-          files: artifacts/**/*
+          files: release/*
+
+  # Opens a pull request against microsoft/winget-pkgs with the new version.
+  # Requires: repository variable PUBLISH_WINGET=true and secret WINGET_TOKEN.
+  # The very first version must be submitted manually, see docs/PUBLISHING.md.
+  winget:
+    if: ${{ startsWith(github.ref, 'refs/tags/') && vars.PUBLISH_WINGET == 'true' }}
+    needs: release
+    runs-on: ubuntu-latest
+    steps:
+      - uses: vedantmgoyal9/winget-releaser@main
+        with:
+          identifier: ArveLomsland.SyncthingStatus
+          version: ${{ needs.release.outputs.version }}
+          installers-regex: '-setup\.exe$'
+          token: ${{ secrets.WINGET_TOKEN }}
+
+  # Updates the Scoop manifest in this repository with the new version and hash.
+  scoop:
+    if: startsWith(github.ref, 'refs/tags/')
+    needs: release
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: main
+
+      - name: Update manifest
+        env:
+          GH_TOKEN: ${{ github.token }}
+          VERSION: ${{ needs.release.outputs.version }}
+        run: |
+          url="https://github.com/${GITHUB_REPOSITORY}/releases/download/v${VERSION}/syncthing-status-${VERSION}-setup.exe"
+          curl -fsSL -o setup.exe "$url"
+          hash=$(sha256sum setup.exe | cut -d' ' -f1)
+          rm setup.exe
+
+          jq --arg v "$VERSION" --arg u "$url#/setup.exe" --arg h "$hash" \
+            '.version = $v | .architecture["64bit"].url = $u | .architecture["64bit"].hash = $h' \
+            bucket/syncthing-status.json > tmp.json
+          mv tmp.json bucket/syncthing-status.json
+          cat bucket/syncthing-status.json
+
+      - name: Commit
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          if ! git diff --quiet bucket/syncthing-status.json; then
+            git add bucket/syncthing-status.json
+            git commit -m "scoop: update manifest to ${{ needs.release.outputs.version }}"
+            git push
+          fi

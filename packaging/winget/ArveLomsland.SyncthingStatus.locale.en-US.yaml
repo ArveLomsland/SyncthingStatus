@@ -1,0 +1,28 @@
+# yaml-language-server: $schema=https://aka.ms/winget-manifest.defaultLocale.1.6.0.schema.json
+PackageIdentifier: ArveLomsland.SyncthingStatus
+PackageVersion: 0.1.0
+PackageLocale: en-US
+Publisher: Arve Lomsland
+PublisherUrl: https://github.com/ArveLomsland
+PublisherSupportUrl: https://github.com/ArveLomsland/SyncthingStatus/issues
+PackageName: SyncthingStatus
+PackageUrl: https://github.com/ArveLomsland/SyncthingStatus
+License: MIT
+LicenseUrl: https://github.com/ArveLomsland/SyncthingStatus/blob/main/LICENSE
+ShortDescription: Shows the status of a local Syncthing instance as a system tray icon.
+Description: |-
+  SyncthingStatus is a small Rust application that displays the status of a local
+  Syncthing instance as a colour-coded system tray icon: up to date, syncing,
+  paused, error or unreachable. The tooltip shows the Syncthing version, connected
+  devices, remaining data and transfer speeds, and the menu lists per-folder
+  completion. The address and API key are discovered automatically from
+  Syncthing's config.xml.
+Tags:
+  - syncthing
+  - sync
+  - tray
+  - status
+  - file-sync
+ReleaseNotesUrl: https://github.com/ArveLomsland/SyncthingStatus/releases
+ManifestType: defaultLocale
+ManifestVersion: 1.6.0

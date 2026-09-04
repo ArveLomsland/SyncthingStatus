@@ -5,7 +5,7 @@ Name=SyncthingStatus
 Name[nb]=SyncthingStatus
 Comment=Show Syncthing status in the system tray
 Comment[nb]=Vis status for Syncthing i systemkurven
-# Litt forsinkelse slik at panelet/statusfeltet er klart før ikonet legges til
+# Small delay so the panel/status area is ready before the icon is added
 Exec=sh -c 'sleep 5; exec /usr/bin/syncthing-status'
 Icon=syncthing-status
 Terminal=false

@@ -1,26 +1,26 @@
-//! Genererer tray-ikoner i kode (ingen bildefiler nødvendig).
+//! Generates the tray icons in code (no image files needed).
 
 use tray_icon::Icon;
 
 use crate::syncthing::State;
 
 const SIZE: u32 = 32;
-const SS: i32 = 3; // supersampling per akse
+const SS: i32 = 3; // supersampling per axis
 
 fn base_color(state: State) -> [f32; 3] {
     match state {
-        State::Ok => [0.18, 0.70, 0.35],      // grønn
-        State::Syncing => [0.16, 0.52, 0.90], // blå
+        State::Ok => [0.18, 0.70, 0.35],      // green
+        State::Syncing => [0.16, 0.52, 0.90], // blue
         State::Scanning => [0.35, 0.62, 0.85],
-        State::Paused => [0.95, 0.72, 0.15], // gul
-        State::Error => [0.85, 0.22, 0.22],  // rød
-        State::Offline => [0.55, 0.57, 0.60], // grå
+        State::Paused => [0.95, 0.72, 0.15], // yellow
+        State::Error => [0.85, 0.22, 0.22],  // red
+        State::Offline => [0.55, 0.57, 0.60], // grey
     }
 }
 
-/// `phase` (0.0-1.0) brukes til å animere synk-ikonet.
+/// `phase` (0.0-1.0) animates the syncing icon.
 pub fn build(state: State, phase: f32) -> Icon {
-    Icon::from_rgba(rgba(state, phase), SIZE, SIZE).expect("gyldig ikon-buffer")
+    Icon::from_rgba(rgba(state, phase), SIZE, SIZE).expect("valid icon buffer")
 }
 
 fn rgba(state: State, phase: f32) -> Vec<u8> {
@@ -67,7 +67,7 @@ fn rgba(state: State, phase: f32) -> Vec<u8> {
     rgba
 }
 
-/// ASCII-forhåndsvisning (feilsøking: `syncthing-status --preview`)
+/// ASCII preview (debugging: `syncthing-status --preview`)
 pub fn ascii_preview(state: State, phase: f32) -> String {
     let buf = rgba(state, phase);
     let n = SIZE as usize;
@@ -88,32 +88,32 @@ pub fn ascii_preview(state: State, phase: f32) -> String {
     out
 }
 
-/// Glyf-test i normaliserte koordinater (-1..1, y peker ned).
+/// Glyph test in normalised coordinates (-1..1, y points down).
 fn in_glyph(state: State, x: f32, y: f32, phase: f32) -> bool {
     match state {
-        // Hake
+        // Check mark
         State::Ok => {
             seg(x, y, -0.48, 0.02, -0.13, 0.38, 0.20) || seg(x, y, -0.13, 0.38, 0.50, -0.34, 0.20)
         }
-        // To roterende buer (synk-piler)
+        // Two rotating arcs (sync arrows)
         State::Syncing | State::Scanning => {
             let a0 = phase * std::f32::consts::TAU;
             arc(x, y, 0.36, 0.62, a0, a0 + 2.1) || arc(x, y, 0.36, 0.62, a0 + 3.14, a0 + 5.24)
         }
-        // Pause: to loddrette streker
+        // Pause: two vertical bars
         State::Paused => x.abs() > 0.12 && x.abs() < 0.36 && y.abs() < 0.42,
-        // Utropstegn
+        // Exclamation mark
         State::Error => {
             (x.abs() < 0.13 && y > -0.48 && y < 0.16) || (x.abs() < 0.15 && y > 0.30 && y < 0.54)
         }
-        // Kryss
+        // Cross
         State::Offline => {
             seg(x, y, -0.34, -0.34, 0.34, 0.34, 0.13) || seg(x, y, 0.34, -0.34, -0.34, 0.34, 0.13)
         }
     }
 }
 
-/// Avstand fra punkt til linjestykke < halvbredde
+/// True when the distance from the point to the line segment is < half the width
 fn seg(px: f32, py: f32, ax: f32, ay: f32, bx: f32, by: f32, width: f32) -> bool {
     let (vx, vy) = (bx - ax, by - ay);
     let (wx, wy) = (px - ax, py - ay);
@@ -128,7 +128,7 @@ fn seg(px: f32, py: f32, ax: f32, ay: f32, bx: f32, by: f32, width: f32) -> bool
     (dx * dx + dy * dy).sqrt() < width / 2.0
 }
 
-/// Ringsegment mellom radius r0..r1 og vinkel a0..a1 (radianer)
+/// Ring segment between radius r0..r1 and angle a0..a1 (radians)
 fn arc(px: f32, py: f32, r0: f32, r1: f32, a0: f32, a1: f32) -> bool {
     let d = (px * px + py * py).sqrt();
     if d < r0 || d > r1 {

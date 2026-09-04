@@ -1,0 +1,113 @@
+name: apt-repo
+
+# Publishes a signed APT repository to GitHub Pages, built from the .deb files
+# attached to every GitHub release. Users then get updates through `apt upgrade`.
+#
+# Requires:
+#   - repository variable PUBLISH_APT = true
+#   - secrets APT_GPG_PRIVATE_KEY and (optionally) APT_GPG_PASSPHRASE
+#   - Settings -> Pages -> Source = GitHub Actions
+# See docs/PUBLISHING.md.
+
+on:
+  release:
+    types: [published]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: pages
+  cancel-in-progress: false
+
+jobs:
+  build:
+    if: ${{ vars.PUBLISH_APT == 'true' }}
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deploy.outputs.page_url }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install tooling
+        run: sudo apt-get update && sudo apt-get install -y dpkg-dev apt-utils gnupg
+
+      - name: Download .deb files from all releases
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          mkdir -p site/pool/main
+          for tag in $(gh release list --limit 100 --json tagName -q '.[].tagName'); do
+            gh release download "$tag" -p '*.deb' -D site/pool/main --clobber || true
+          done
+          ls -la site/pool/main
+          if [ -z "$(ls -A site/pool/main)" ]; then
+            echo "No .deb files found in any release - publish a release first." >&2
+            exit 1
+          fi
+
+      - name: Build package index
+        working-directory: site
+        run: |
+          mkdir -p dists/stable/main/binary-amd64
+          dpkg-scanpackages --arch amd64 pool/ > dists/stable/main/binary-amd64/Packages
+          gzip -9 -k -f dists/stable/main/binary-amd64/Packages
+          apt-ftparchive \
+            -o APT::FTPArchive::Release::Origin=SyncthingStatus \
+            -o APT::FTPArchive::Release::Label=SyncthingStatus \
+            -o APT::FTPArchive::Release::Suite=stable \
+            -o APT::FTPArchive::Release::Codename=stable \
+            -o APT::FTPArchive::Release::Architectures=amd64 \
+            -o APT::FTPArchive::Release::Components=main \
+            release dists/stable > dists/stable/Release
+
+      - name: Sign repository
+        env:
+          APT_GPG_PRIVATE_KEY: ${{ secrets.APT_GPG_PRIVATE_KEY }}
+          APT_GPG_PASSPHRASE: ${{ secrets.APT_GPG_PASSPHRASE }}
+        working-directory: site
+        run: |
+          echo "$APT_GPG_PRIVATE_KEY" | gpg --batch --import
+          keyid=$(gpg --list-secret-keys --with-colons | awk -F: '/^sec:/ {print $5; exit}')
+          echo "Signing with key $keyid"
+          sign() {
+            gpg --batch --yes --pinentry-mode loopback \
+                --passphrase "$APT_GPG_PASSPHRASE" --default-key "$keyid" "$@"
+          }
+          sign -abs -o dists/stable/Release.gpg dists/stable/Release
+          sign --clearsign -o dists/stable/InRelease dists/stable/Release
+          gpg --export "$keyid" > key.gpg
+
+      - name: Landing page
+        working-directory: site
+        run: |
+          base="${{ github.server_url }}/${{ github.repository }}"
+          pages="https://${{ github.repository_owner }}.github.io/${{ github.event.repository.name }}"
+          cat > index.html <<EOF
+          <!doctype html>
+          <html lang="en"><head><meta charset="utf-8">
+          <title>SyncthingStatus APT repository</title>
+          <style>body{font-family:system-ui,sans-serif;max-width:46rem;margin:3rem auto;padding:0 1rem;line-height:1.6}
+          pre{background:#f4f4f4;padding:1rem;overflow-x:auto;border-radius:6px}</style>
+          </head><body>
+          <h1>SyncthingStatus APT repository</h1>
+          <p>Debian/Ubuntu packages for <a href="$base">SyncthingStatus</a>.</p>
+          <pre><code>sudo install -d -m 0755 /etc/apt/keyrings
+          curl -fsSL $pages/key.gpg | sudo tee /etc/apt/keyrings/syncthingstatus.gpg > /dev/null
+          echo "deb [signed-by=/etc/apt/keyrings/syncthingstatus.gpg] $pages stable main" \\
+            | sudo tee /etc/apt/sources.list.d/syncthingstatus.list
+          sudo apt update
+          sudo apt install syncthing-status</code></pre>
+          </body></html>
+          EOF
+
+      - uses: actions/configure-pages@v5
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: site
+      - id: deploy
+        uses: actions/deploy-pages@v4

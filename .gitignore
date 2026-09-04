@@ -1,2 +1,5 @@
 /target
 /dist
+
+# Local AI assistant transcripts - not for a public repository
+/.pi-sessions

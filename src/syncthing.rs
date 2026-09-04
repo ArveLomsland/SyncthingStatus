@@ -1,4 +1,4 @@
-//! Minimal klient mot Syncthing REST API.
+//! Minimal client for the Syncthing REST API.
 
 use std::time::{Duration, Instant};
 
@@ -17,12 +17,12 @@ pub enum State {
 impl State {
     pub fn label(self) -> &'static str {
         match self {
-            State::Ok => "Oppdatert",
-            State::Syncing => "Synkroniserer",
-            State::Scanning => "Skanner",
-            State::Paused => "Pauset",
-            State::Error => "Feil",
-            State::Offline => "Ikke tilkoblet",
+            State::Ok => "Up to date",
+            State::Syncing => "Syncing",
+            State::Scanning => "Scanning",
+            State::Paused => "Paused",
+            State::Error => "Error",
+            State::Offline => "Disconnected",
         }
     }
 }
@@ -34,7 +34,7 @@ pub struct FolderStatus {
     pub paused: bool,
     /// "idle", "syncing", "scanning", "error", ...
     pub state: String,
-    /// 0.0 - 100.0 (lokal fullførelse)
+    /// 0.0 - 100.0 (local completion)
     pub completion: f64,
     pub need_bytes: u64,
     pub need_items: u64,
@@ -62,7 +62,7 @@ pub struct Status {
     pub in_rate: f64,
     pub out_rate: f64,
     pub errors: Vec<String>,
-    /// Feilmelding fra selve tilkoblingen
+    /// Error message from the connection itself
     pub conn_error: Option<String>,
 }
 
@@ -106,10 +106,10 @@ impl Status {
         State::Ok
     }
 
-    /// Kort oppsummering til tooltip
+    /// Short summary for the tooltip
     pub fn summary(&self) -> String {
         if !self.online {
-            let mut s = String::from("Syncthing: ikke tilkoblet");
+            let mut s = String::from("Syncthing: not connected");
             if let Some(e) = &self.conn_error {
                 s.push_str("\n");
                 s.push_str(e);
@@ -119,14 +119,14 @@ impl Status {
         let st = self.state();
         let mut s = format!("Syncthing {} — {}", self.version, st.label());
         s.push_str(&format!(
-            "\n{} av {} enheter tilkoblet",
+            "\n{} of {} devices connected",
             self.devices_connected, self.devices_total
         ));
         if st == State::Syncing {
             let need_bytes: u64 = self.folders.iter().map(|f| f.need_bytes).sum();
             let need_items: u64 = self.folders.iter().map(|f| f.need_items).sum();
             s.push_str(&format!(
-                "\nGjenstår: {} ({} filer)",
+                "\nRemaining: {} ({} files)",
                 fmt_bytes(need_bytes as f64),
                 need_items
             ));
@@ -139,9 +139,9 @@ impl Status {
             ));
         }
         if let Some(err) = self.errors.first() {
-            s.push_str(&format!("\nFeil: {err}"));
+            s.push_str(&format!("\nError: {err}"));
         }
-        // Windows tooltip er begrenset til 127 tegn
+        // The Windows tooltip is limited to 127 characters
         truncate(&s, 126)
     }
 }
@@ -169,7 +169,7 @@ fn truncate(s: &str, max: usize) -> String {
     }
 }
 
-// ---------- API-modeller ----------
+// ---------- API models ----------
 
 #[derive(Deserialize)]
 struct VersionResp {
@@ -239,7 +239,7 @@ struct ErrorEntry {
     message: String,
 }
 
-// ---------- Klient ----------
+// ---------- Client ----------
 
 pub struct Client {
     http: reqwest::blocking::Client,
@@ -253,7 +253,7 @@ impl Client {
     pub fn new(base_url: String, api_key: String) -> Result<Self, String> {
         let http = reqwest::blocking::Client::builder()
             .timeout(Duration::from_secs(8))
-            // Syncthing bruker selvsignert sertifikat på https
+            // Syncthing uses a self-signed certificate for https
             .danger_accept_invalid_certs(true)
             .build()
             .map_err(|e| e.to_string())?;
@@ -275,7 +275,7 @@ impl Client {
             .send()
             .map_err(|e| short_err(&e.to_string()))?;
         if !resp.status().is_success() {
-            return Err(format!("{} svarte {}", path, resp.status().as_u16()));
+            return Err(format!("{} returned {}", path, resp.status().as_u16()));
         }
         resp.json::<T>().map_err(|e| format!("{path}: {e}"))
     }
@@ -291,7 +291,7 @@ impl Client {
         if resp.status().is_success() {
             Ok(())
         } else {
-            Err(format!("{} svarte {}", path, resp.status().as_u16()))
+            Err(format!("{} returned {}", path, resp.status().as_u16()))
         }
     }
 
@@ -360,7 +360,7 @@ impl Client {
             });
         }
 
-        // Andre enheter enn oss selv
+        // Devices other than ourselves
         let devices_total = device_cfgs
             .iter()
             .filter(|d| Some(&d.device_id) != self.my_id.as_ref())

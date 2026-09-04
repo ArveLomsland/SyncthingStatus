@@ -1,7 +1,7 @@
-//! Windows 11 gjemmer nye tray-ikoner bak «^»-pilen. Innstillingen ligger i
-//! HKCU\Control Panel\NotifyIconSettings\<hash>\IsPromoted, der <hash> beregnes
-//! av Explorer ut fra filbanen. Vi finner riktig nøkkel ved å sammenligne
-//! ExecutablePath, og setter IsPromoted=1 første gang appen kjører.
+//! Windows 11 hides new tray icons behind the "^" arrow. The setting lives in
+//! HKCU\Control Panel\NotifyIconSettings\<hash>\IsPromoted, where <hash> is
+//! derived by Explorer from the executable path. We locate the right key by
+//! comparing ExecutablePath, and set IsPromoted=1 the first time the app runs.
 
 use std::ffi::c_void;
 
@@ -17,7 +17,7 @@ fn wide(s: &str) -> Vec<u16> {
     s.encode_utf16().chain(std::iter::once(0)).collect()
 }
 
-/// Returnerer `Ok(true)` hvis ikonet ble (eller allerede var) gjort synlig.
+/// Returns `Ok(true)` if the icon was made visible (or already was).
 pub fn promote() -> Result<bool, String> {
     let exe = std::env::current_exe()
         .map_err(|e| e.to_string())?
@@ -34,7 +34,7 @@ pub fn promote() -> Result<bool, String> {
             &mut root,
         ) != ERROR_SUCCESS
         {
-            return Err("fant ikke NotifyIconSettings".into());
+            return Err("NotifyIconSettings not found".into());
         }
 
         let mut index = 0u32;
@@ -90,7 +90,7 @@ pub fn promote() -> Result<bool, String> {
                     if rc != ERROR_SUCCESS {
                         RegCloseKey(key);
                         RegCloseKey(root);
-                        return Err(format!("kunne ikke skrive IsPromoted (feil {rc})"));
+                        return Err(format!("could not write IsPromoted (error {rc})"));
                     }
                 }
                 found = true;

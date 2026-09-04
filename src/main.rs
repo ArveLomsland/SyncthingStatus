@@ -1,4 +1,4 @@
-// Ingen konsollvindu i release-bygg
+// No console window in release builds
 #![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
 
 mod config;
@@ -16,7 +16,7 @@ use tray_icon::{MouseButton, MouseButtonState, TrayIcon, TrayIconBuilder, TrayIc
 
 use syncthing::{fmt_bytes, State, Status};
 
-/// Kommandoer til bakgrunnstråden
+/// Commands for the background thread
 enum Cmd {
     RefreshNow,
     RescanAll,
@@ -33,7 +33,7 @@ fn main() {
             std::process::exit(1);
         }
     };
-    // Feilsøking: vis ikonene som ASCII
+    // Debugging: render the icons as ASCII art
     if std::env::args().any(|a| a == "--preview") {
         for (st, phase) in [
             (State::Ok, 0.0),
@@ -47,18 +47,18 @@ fn main() {
         return;
     }
 
-    // Diagnosemodus: skriv status til konsollet og avslutt
+    // Diagnostics: print the status to the console and exit
     if std::env::args().any(|a| a == "--status") {
         println!("URL: {}", cfg.base_url);
-        println!("API-nøkkel: {} tegn", cfg.api_key.len());
+        println!("API key: {} characters", cfg.api_key.len());
         match syncthing::Client::new(cfg.base_url.clone(), cfg.api_key.clone()) {
             Ok(mut c) => {
                 let s = c.fetch();
-                println!("Tilstand: {:?}", s.state());
+                println!("State: {:?}", s.state());
                 println!("{}", s.summary());
                 for f in &s.folders {
                     println!(
-                        "  {:<24} {:<10} {:>6.1}%  {} igjen",
+                        "  {:<24} {:<10} {:>6.1}%  {} remaining",
                         f.display_name(),
                         f.state,
                         f.completion,
@@ -66,10 +66,10 @@ fn main() {
                     );
                 }
                 if let Some(e) = &s.conn_error {
-                    println!("Feil: {e}");
+                    println!("Error: {e}");
                 }
             }
-            Err(e) => println!("Klientfeil: {e}"),
+            Err(e) => println!("Client error: {e}"),
         }
         return;
     }
@@ -77,7 +77,7 @@ fn main() {
     if cfg.api_key.is_empty() {
         platform::error_dialog(
             "SyncthingStatus",
-            "Fant ingen API-nøkkel. Sett SYNCTHING_APIKEY, eller aktiver GUI i Syncthing.",
+            "No API key found. Set SYNCTHING_APIKEY, or enable the GUI in Syncthing.",
         );
         std::process::exit(1);
     }
@@ -103,7 +103,7 @@ fn main() {
     }
 }
 
-/// Bakgrunnstråd: spør Syncthing med jevne mellomrom
+/// Background thread: polls Syncthing at a fixed interval
 fn poller(
     base_url: String,
     api_key: String,
@@ -155,11 +155,11 @@ fn run_tray(
     let mut menu_lines: Vec<String> = Vec::new();
 
     let tray: TrayIcon = TrayIconBuilder::new()
-        .with_tooltip("Syncthing — kobler til …")
+        .with_tooltip("Syncthing — connecting …")
         .with_icon(icon::build(State::Offline, 0.0))
         .with_menu(Box::new(build_menu(&menu_lines)))
         .build()
-        .map_err(|e| format!("Kunne ikke lage tray-ikon: {e}"))?;
+        .map_err(|e| format!("Could not create the tray icon: {e}"))?;
 
     let menu_events = MenuEvent::receiver();
     let tray_events = TrayIconEvent::receiver();
@@ -169,16 +169,16 @@ fn run_tray(
     let mut last_anim = Instant::now();
     let mut icon_dirty = true;
 
-    // Windows 11: gjør ikonet synlig på oppgavelinjen i stedet for i «^»-menyen.
-    // Registeroppføringen opprettes av Explorer først etter at ikonet er vist,
-    // så vi prøver noen ganger de første sekundene.
+    // Windows 11: show the icon on the taskbar instead of behind the "^" menu.
+    // Explorer only creates the registry entry once the icon has been shown,
+    // so we retry a few times during the first seconds.
     #[cfg(windows)]
     let mut promote = (!std::env::args().any(|a| a == "--no-promote")).then(|| {
         (Instant::now(), 0u32)
     });
 
     loop {
-        // --- ny status fra bakgrunnstråd ---
+        // --- new status from the background thread ---
         let mut got_status = false;
         while let Ok(s) = status_rx.try_recv() {
             status = s;
@@ -199,7 +199,7 @@ fn run_tray(
             }
         }
 
-        // --- animasjon ved synkronisering ---
+        // --- animation while syncing ---
         if matches!(state, State::Syncing | State::Scanning)
             && last_anim.elapsed() >= Duration::from_millis(100)
         {
@@ -213,7 +213,7 @@ fn run_tray(
             let _ = tray.set_icon(Some(icon::build(state, phase)));
         }
 
-        // --- menyvalg ---
+        // --- menu actions ---
         while let Ok(ev) = menu_events.try_recv() {
             match ev.id.0.as_str() {
                 MenuIds::OPEN => {
@@ -230,7 +230,7 @@ fn run_tray(
             }
         }
 
-        // --- klikk på ikonet åpner web-GUI ---
+        // --- clicking the icon opens the web GUI ---
         while let Ok(ev) = tray_events.try_recv() {
             if let TrayIconEvent::Click {
                 button: MouseButton::Left,
@@ -261,8 +261,8 @@ fn run_tray(
     }
 }
 
-/// Tooltip (Windows/macOS) og tittel ved siden av ikonet (Linux).
-/// `set_tooltip` er en no-op i libappindicator, derfor tittel på Linux.
+/// Tooltip (Windows/macOS) and title next to the icon (Linux).
+/// `set_tooltip` is a no-op in libappindicator, hence the title on Linux.
 fn apply_labels(tray: &TrayIcon, status: &Status) {
     let _ = tray.set_tooltip(Some(status.summary()));
 
@@ -272,22 +272,22 @@ fn apply_labels(tray: &TrayIcon, status: &Status) {
             match status.state() {
                 State::Syncing => {
                     let need: u64 = status.folders.iter().map(|f| f.need_bytes).sum();
-                    format!("Synkroniserer – {} igjen", fmt_bytes(need as f64))
+                    format!("Syncing – {} remaining", fmt_bytes(need as f64))
                 }
                 st => st.label().to_string(),
             }
         } else {
-            "Ikke tilkoblet".to_string()
+            "Disconnected".to_string()
         };
         tray.set_title(Some(title));
     }
 }
 
-/// Informasjonslinjer (deaktiverte menyelementer) øverst i menyen
+/// Information lines (disabled menu items) at the top of the menu
 fn status_lines(status: &Status) -> Vec<String> {
     let mut lines = Vec::new();
     if !status.online {
-        lines.push("Ikke tilkoblet Syncthing".to_string());
+        lines.push("Not connected to Syncthing".to_string());
         if let Some(e) = &status.conn_error {
             lines.push(format!("  {e}"));
         }
@@ -300,12 +300,12 @@ fn status_lines(status: &Status) -> Vec<String> {
         status.version
     ));
     lines.push(format!(
-        "Enheter: {} / {} tilkoblet",
+        "Devices: {} / {} connected",
         status.devices_connected, status.devices_total
     ));
     if status.in_rate > 1024.0 || status.out_rate > 1024.0 {
         lines.push(format!(
-            "Trafikk: ned {}/s  ·  opp {}/s",
+            "Traffic: down {}/s  ·  up {}/s",
             fmt_bytes(status.in_rate),
             fmt_bytes(status.out_rate)
         ));
@@ -314,19 +314,18 @@ fn status_lines(status: &Status) -> Vec<String> {
 
     for f in &status.folders {
         let detail = if f.paused {
-            "pauset".to_string()
+            "paused".to_string()
         } else if let Some(err) = &f.error {
-            format!("feil: {err}")
+            format!("error: {err}")
         } else if f.need_items > 0 || f.state.starts_with("sync") {
             format!(
-                "{:.0}% · {} igjen",
+                "{:.0}% · {} remaining",
                 f.completion,
                 fmt_bytes(f.need_bytes as f64)
             )
         } else {
             match f.state.as_str() {
-                "scanning" => "skanner".to_string(),
-                "idle" => "oppdatert".to_string(),
+                "idle" => "up to date".to_string(),
                 other => other.to_string(),
             }
         };
@@ -345,7 +344,7 @@ fn build_menu(lines: &[String]) -> Menu {
         if line.is_empty() {
             let _ = menu.append(&PredefinedMenuItem::separator());
         } else {
-            // deaktivert = ren informasjon
+            // disabled = informational only
             let _ = menu.append(&MenuItem::new(line, false, None));
         }
     }
@@ -354,23 +353,23 @@ fn build_menu(lines: &[String]) -> Menu {
     }
     let _ = menu.append(&MenuItem::with_id(
         MenuIds::OPEN,
-        "Åpne Syncthing Web GUI",
+        "Open Syncthing Web GUI",
         true,
         None,
     ));
     let _ = menu.append(&MenuItem::with_id(
         MenuIds::RESCAN,
-        "Skann alle mapper",
+        "Rescan all folders",
         true,
         None,
     ));
     let _ = menu.append(&MenuItem::with_id(
         MenuIds::REFRESH,
-        "Oppdater status nå",
+        "Refresh status now",
         true,
         None,
     ));
     let _ = menu.append(&PredefinedMenuItem::separator());
-    let _ = menu.append(&MenuItem::with_id(MenuIds::QUIT, "Avslutt", true, None));
+    let _ = menu.append(&MenuItem::with_id(MenuIds::QUIT, "Quit", true, None));
     menu
 }

@@ -1,15 +1,15 @@
-//! Finner adresse + API-nøkkel til lokal Syncthing-instans.
+//! Discovers the address and API key of the local Syncthing instance.
 //!
-//! Rekkefølge:
-//!   1. Miljøvariabler SYNCTHING_URL / SYNCTHING_APIKEY
-//!   2. Syncthing sin egen config.xml (standardplasseringer per OS)
+//! Order of precedence:
+//!   1. Environment variables SYNCTHING_URL / SYNCTHING_APIKEY
+//!   2. Syncthing's own config.xml (default location per OS)
 
 use std::path::{Path, PathBuf};
 use std::time::Duration;
 
 #[derive(Debug, Clone)]
 pub struct AppConfig {
-    /// F.eks. "http://127.0.0.1:8384"
+    /// e.g. "http://127.0.0.1:8384"
     pub base_url: String,
     pub api_key: String,
     pub poll_interval: Duration,
@@ -38,12 +38,13 @@ pub fn load() -> Result<AppConfig, String> {
     }
 
     let path = find_config_xml().ok_or_else(|| {
-        "Fant ikke Syncthing config.xml. Sett SYNCTHING_URL og SYNCTHING_APIKEY.".to_string()
+        "Could not find Syncthing's config.xml. Set SYNCTHING_URL and SYNCTHING_APIKEY."
+            .to_string()
     })?;
     let xml = std::fs::read_to_string(&path)
-        .map_err(|e| format!("Kunne ikke lese {}: {e}", path.display()))?;
+        .map_err(|e| format!("Could not read {}: {e}", path.display()))?;
     let parsed = parse_config_xml(&xml)
-        .ok_or_else(|| format!("Fant ikke <gui>-seksjon i {}", path.display()))?;
+        .ok_or_else(|| format!("No <gui> section found in {}", path.display()))?;
 
     Ok(AppConfig {
         base_url: env_url.map(|u| normalize_url(&u)).unwrap_or(parsed.base_url),
@@ -68,7 +69,7 @@ fn parse_config_xml(xml: &str) -> Option<ParsedXml> {
     let address = tag_value(gui_body, "address").unwrap_or_else(|| "127.0.0.1:8384".into());
     let api_key = tag_value(gui_body, "apikey").unwrap_or_default();
 
-    // "0.0.0.0:8384" / ":8384" gir ingen mening som klient-adresse
+    // "0.0.0.0:8384" / ":8384" make no sense as a client address
     let address = match address.rsplit_once(':') {
         Some((host, port)) if host.is_empty() || host == "0.0.0.0" || host == "[::]" => {
             format!("127.0.0.1:{port}")
@@ -105,7 +106,7 @@ fn normalize_url(url: &str) -> String {
     }
 }
 
-/// Standardplasseringer for Syncthing sin config.xml.
+/// Default locations of Syncthing's config.xml.
 fn find_config_xml() -> Option<PathBuf> {
     let mut candidates: Vec<PathBuf> = Vec::new();
 
@@ -115,7 +116,7 @@ fn find_config_xml() -> Option<PathBuf> {
 
     #[cfg(windows)]
     {
-        // v2 bruker LOCALAPPDATA, v1 brukte APPDATA
+        // v2 uses LOCALAPPDATA, v1 used APPDATA
         for var in ["LOCALAPPDATA", "APPDATA"] {
             if let Ok(dir) = std::env::var(var) {
                 candidates.push(Path::new(&dir).join("Syncthing").join("config.xml"));

@@ -2,14 +2,14 @@
 name = "syncthing-status"
 version = "0.1.0"
 edition = "2021"
-description = "Viser status for Syncthing i systemtray"
+description = "Shows Syncthing status in the system tray"
 license = "MIT"
 
 [dependencies]
 reqwest = { version = "0.12", default-features = false, features = ["blocking", "json", "rustls-tls"] }
 serde = { version = "1", features = ["derive"] }
 serde_json = "1"
-# libxdo (standard) trengs bare for hurtigtaster på Linux – droppes for færre systemavhengigheter
+# libxdo (default) is only needed for global shortcuts on Linux - dropped to reduce system dependencies
 tray-icon = { version = "0.19", default-features = false }
 open = "5"
 
@@ -22,19 +22,19 @@ windows-sys = { version = "0.59", features = [
 ] }
 
 [target.'cfg(target_os = "linux")'.dependencies]
-# må være samme gtk-versjon som tray-icon/libappindicator bruker
+# must match the gtk version used by tray-icon/libappindicator
 gtk = "0.18"
 
-# ---- Ubuntu/Debian-pakke (cargo deb) ----
+# ---- Ubuntu/Debian package (cargo deb) ----
 [package.metadata.deb]
-maintainer = "Arve"
-copyright = "2026, Arve"
+maintainer = "Arve Lomsland <arve.lomsland@proplan.no>"
+copyright = "2026, Arve Lomsland"
 section = "utils"
 priority = "optional"
 extended-description = """\
-Viser status for en lokal Syncthing-instans som ikon i systemkurven: \
-synkroniseringsstatus, tilkoblede enheter, overføringshastighet og status per mappe. \
-Adresse og API-nøkkel leses automatisk fra Syncthing sin config.xml."""
+Shows the status of a local Syncthing instance as a system tray icon: \
+sync status, connected devices, transfer speed and per-folder status. \
+The address and API key are read automatically from Syncthing's config.xml."""
 depends = "$auto, libayatana-appindicator3-1 | libappindicator3-1"
 assets = [
     ["target/release/syncthing-status", "usr/bin/", "755"],
@@ -42,6 +42,7 @@ assets = [
     ["packaging/linux/syncthing-status-autostart.desktop", "etc/xdg/autostart/", "644"],
     ["packaging/linux/syncthing-status.svg", "usr/share/icons/hicolor/scalable/apps/", "644"],
     ["README.md", "usr/share/doc/syncthing-status/README.md", "644"],
+    ["LICENSE", "usr/share/doc/syncthing-status/LICENSE", "644"],
 ]
 
 [profile.release]

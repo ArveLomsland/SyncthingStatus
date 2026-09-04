@@ -1,21 +1,21 @@
-//! Plattformspesifikk oppstart, meldingspumpe og feildialog.
+//! Platform-specific startup, message pump and error dialog.
 //!
-//! Windows: Win32-meldingsløkke (`PeekMessage` + `MsgWaitForMultipleObjectsEx`).
-//! Linux:   GTK-løkke, siden tray-ikonet går via libappindicator.
+//! Windows: Win32 message loop (`PeekMessage` + `MsgWaitForMultipleObjectsEx`).
+//! Linux:   GTK loop, since the tray icon goes through libappindicator.
 
-/// Må kalles før tray-ikonet opprettes.
+/// Must be called before the tray icon is created.
 pub fn init() -> Result<(), String> {
     #[cfg(target_os = "linux")]
     {
         gtk::init().map_err(|e| {
-            format!("Kunne ikke initialisere GTK ({e}). Kjører du i et grafisk skrivebord?")
+            format!("Could not initialise GTK ({e}). Are you running a graphical desktop?")
         })?;
     }
     Ok(())
 }
 
-/// Behandler ventende hendelser og venter deretter opptil `timeout_ms`.
-/// Returnerer `false` når appen skal avsluttes.
+/// Processes pending events, then waits for up to `timeout_ms`.
+/// Returns `false` when the app should exit.
 #[cfg(windows)]
 pub fn pump_events(timeout_ms: u32) -> bool {
     use windows_sys::Win32::UI::WindowsAndMessaging::{
@@ -39,8 +39,8 @@ pub fn pump_events(timeout_ms: u32) -> bool {
 
 #[cfg(target_os = "linux")]
 pub fn pump_events(timeout_ms: u32) -> bool {
-    // Kjør GTK-løkken manuelt slik at menyklikk behandles, uten å blokkere
-    // hovedtråden slik gtk::main() ville gjort.
+    // Drive the GTK loop manually so menu clicks are handled, without blocking
+    // the main thread the way gtk::main() would.
     let deadline =
         std::time::Instant::now() + std::time::Duration::from_millis(timeout_ms as u64);
     loop {
@@ -64,7 +64,7 @@ pub fn pump_events(timeout_ms: u32) -> bool {
     true
 }
 
-/// Vis en feilmelding til brukeren (appen har ikke nødvendigvis konsoll).
+/// Show an error message to the user (the app may not have a console).
 #[cfg(windows)]
 pub fn error_dialog(title: &str, text: &str) {
     use windows_sys::Win32::UI::WindowsAndMessaging::{MessageBoxW, MB_ICONERROR, MB_OK};
@@ -83,7 +83,7 @@ pub fn error_dialog(title: &str, text: &str) {
 #[cfg(not(windows))]
 pub fn error_dialog(title: &str, text: &str) {
     eprintln!("{title}: {text}");
-    // Best effort: vis dialog hvis zenity/kdialog finnes
+    // Best effort: show a dialog if zenity/kdialog is available
     #[cfg(target_os = "linux")]
     {
         let _ = std::process::Command::new("zenity")
