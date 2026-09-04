@@ -1,31 +1,31 @@
 {
-    "version": "0.0.0",
-    "description": "Shows the status of a local Syncthing instance as a system tray icon.",
-    "homepage": "https://github.com/ArveLomsland/SyncthingStatus",
-    "license": "MIT",
-    "architecture": {
-        "64bit": {
-            "url": "https://github.com/ArveLomsland/SyncthingStatus/releases/download/v0.0.0/syncthing-status-0.0.0-setup.exe#/setup.exe",
-            "hash": "0000000000000000000000000000000000000000000000000000000000000000"
-        }
-    },
-    "innosetup": true,
-    "extract_dir": "{app}",
-    "bin": "syncthing-status.exe",
-    "shortcuts": [
-        [
-            "syncthing-status.exe",
-            "SyncthingStatus"
-        ]
-    ],
-    "checkver": {
-        "github": "https://github.com/ArveLomsland/SyncthingStatus"
-    },
-    "autoupdate": {
-        "architecture": {
-            "64bit": {
-                "url": "https://github.com/ArveLomsland/SyncthingStatus/releases/download/v$version/syncthing-status-$version-setup.exe#/setup.exe"
-            }
-        }
+  "version": "0.1.0",
+  "description": "Shows the status of a local Syncthing instance as a system tray icon.",
+  "homepage": "https://github.com/ArveLomsland/SyncthingStatus",
+  "license": "MIT",
+  "architecture": {
+    "64bit": {
+      "url": "https://github.com/ArveLomsland/SyncthingStatus/releases/download/v0.1.0/syncthing-status-0.1.0-setup.exe#/setup.exe",
+      "hash": "6384006d048d0415413c0716dc276bd6353d7ca509a4bfa61f64ab8af2283715"
     }
+  },
+  "innosetup": true,
+  "extract_dir": "{app}",
+  "bin": "syncthing-status.exe",
+  "shortcuts": [
+    [
+      "syncthing-status.exe",
+      "SyncthingStatus"
+    ]
+  ],
+  "checkver": {
+    "github": "https://github.com/ArveLomsland/SyncthingStatus"
+  },
+  "autoupdate": {
+    "architecture": {
+      "64bit": {
+        "url": "https://github.com/ArveLomsland/SyncthingStatus/releases/download/v$version/syncthing-status-$version-setup.exe#/setup.exe"
+      }
+    }
+  }
 }
